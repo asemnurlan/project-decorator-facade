@@ -45,4 +45,7 @@ public class Thermostat implements Device {
         this.temp=tem;
         System.out.println(tem+" temperature set");
     }
+    public double getTemperature(){
+        return temp;
+    }
 }

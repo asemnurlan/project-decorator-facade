@@ -1,6 +1,6 @@
 import Abstract.Device;
 public class DeviceDecorator implements Device {
-    public Device decorator;
+    public final Device decorator;
 
     public DeviceDecorator(Device decorator){
         this.decorator=decorator;
@@ -23,7 +23,7 @@ public class DeviceDecorator implements Device {
 
     @Override
     public String getName() {
-        return decorator.getName();
+        return "Decorated" + decorator.getName();
     }
 
     @Override

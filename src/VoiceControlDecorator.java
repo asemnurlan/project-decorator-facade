@@ -3,33 +3,39 @@ import Abstract.Device;
 public class VoiceControlDecorator extends DeviceDecorator{
     public VoiceControlDecorator(Device decorator){
         super(decorator);
-        System.out.println("voice control works for "+getName());
     }
-    public void process(String command){
-        String lowerCommand=command.toLowerCase();
-        String deviceName=super.getName();
+    public void voice(String command){
+        if (command==null) return;
+        
+    }
 
-        System.out.println("command is got");
+    @Override
+    public void turnOn() {
+        System.out.println("Voice control: turn on");
+        decorator.turnOn();
+    }
 
-        if (lowerCommand.contains("turn on")){
-            turnOn();
-        }
-        else if (lowerCommand.contains("turn off")) {
-            turnOff();
-        }
-        else if (lowerCommand.contains("toggle")) {
-            operate();
-        }
-        else if (lowerCommand.contains("status")) {
-            isOn();
-        }
-        else{
-            System.out.println("command is not found");
-        }
+    @Override
+    public void turnOff() {
+        System.out.println(("Voice control: turn off"));
+        decorator.turnOff();
+    }
+
+    @Override
+    public void operate() {
+        System.out.println("Voice control: operate");
+        decorator.operate();
+    }
+
+    @Override
+    public boolean isOn() {
+        boolean status = decorator.isOn();
+        System.out.println("Voice control: status check: "+(status ? "on" : "off"));
+        return status;
     }
 
     @Override
     public String getName() {
-        return super.getName();
+        return decorator.getName()+" Voice Control";
     }
 }

@@ -32,6 +32,14 @@ public class MusicSystem implements Device {
         return name;
     }
 
+    public void setVolume(int volume){
+        if(isOn()){
+            System.out.println(getName()+" volume set to "+volume);
+        } else{
+            System.out.println(getName()+ " is off");
+        }
+    }
+
     @Override
     public void operate() {
         if(!isOn()){
