@@ -57,7 +57,7 @@ public final class HomeAutomationFacade {
     }
 
     public void startPartyMode() {
-        System.out.println("\n--- Start Party Mode ---");
+        System.out.println("--- Start Party Mode ---");
         for (Device d : devices.values()) {
             Object core = coreOf(d);
 
