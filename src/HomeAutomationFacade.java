@@ -1,136 +1,214 @@
-
 import java.util.*;
 import Abstract.Device;
 
-
 public final class HomeAutomationFacade {
-
 
     private final Map<String, Device> devices = new LinkedHashMap<>();
 
     public HomeAutomationFacade() { }
 
-    public HomeAutomationFacade(DeviceRegistry registry) {
-        if (registry != null) {
-            addIfNotNull(registry.kitchenLight);
-            addIfNotNull(registry.kitchenAudio);
-            addIfNotNull(registry.kitchenThermostat);
-            addIfNotNull(registry.kitchenCamera);
+    public HomeAutomationFacade(Collection<Device> initial) {
+        if (initial != null) {
+            for (Device d : initial) addDevice(d);
         }
     }
 
-
-    public boolean addDevice(Device d) {
-        if (d == null || d.getName() == null || d.getName().isBlank()) return false;
+    public void addDevice(Device d) {
+        if (d == null || d.getName() == null || d.getName().isBlank()) return;
         devices.put(d.getName(), d);
-        System.out.println("[facade] added: " + d.getName() + " (" + d.getClass().getSimpleName() + ")");
-        return true;
     }
 
-    public boolean removeDevice(String name) {
-        if (name == null) return false;
-        Device removed = devices.remove(name);
-        if (removed != null) {
-            System.out.println("[facade] removed: " + name);
-            return true;
-        }
-        System.out.println("[facade] not found: " + name);
-        return false;
-    }
-
-    public boolean contains(String name) { return devices.containsKey(name); }
+    public boolean removeDevice(String name) { return devices.remove(name) != null; }
 
     public Device get(String name) { return devices.get(name); }
 
-    public Collection<Device> listDevices() { return Collections.unmodifiableCollection(devices.values()); }
-
-    public List<String> listNames() { return new ArrayList<>(devices.keySet()); }
-
-
-
-    public boolean addLight(String name)          { return addDevice(new Light(name)); }
-    public boolean addMusicSystem(String name)    { return addDevice(new MusicSystem(name)); }
-    public boolean addThermostat(String name)     { return addDevice(new Thermostat(name)); }
-    public boolean addSecurityCamera(String name) { return addDevice(new SecurityCamera(name)); }
-
-
-
-    public String on(String name)     { return doAndStatus(name, Device::turnOn); }
-    public String off(String name)    { return doAndStatus(name, Device::turnOff); }
-    public String toggle(String name) { return doAndStatus(name, Device::operate); }
-
-    public String operate(String name) { return doAndStatus(name, Device::operate); }
-
-    public String status(String name) {
-        Device d = devices.get(name);
-        if (d == null) return name + " : NOT FOUND";
-        return name + " : " + (d.isOn() ? "ON" : "OFF");
+    public Collection<Device> listDevices() {
+        return Collections.unmodifiableCollection(devices.values());
     }
-
-    public String statusAll() {
-        if (devices.isEmpty()) return "[facade] no devices";
-        StringBuilder sb = new StringBuilder("[facade] devices status:\n");
-        for (Device d : devices.values()) {
-            sb.append(" - ").append(d.getName())
-                    .append(" [").append(d.getClass().getSimpleName()).append("] : ")
-                    .append(d.isOn() ? "ON" : "OFF").append('\n');
-        }
-        return sb.toString();
-    }
-
-    public void allOn()  { devices.values().forEach(Device::turnOn);  }
-    public void allOff() { devices.values().forEach(Device::turnOff); }
-
-
 
     public void activateNightMode() {
-        System.out.println("[scene] night mode");
+        System.out.println("\n--- Night mode ---");
         for (Device d : devices.values()) {
-            String n = d.getName().toLowerCase();
-            if (n.contains("camera")) {
+            Object core = coreOf(d);
+
+            if (core instanceof Light) {
+                d.turnOff();
+
+            } else if (core instanceof Thermostat) {
+                Thermostat th = (Thermostat) core;
+                safeSetTemp(th, 22.0);
+                d.turnOn();
+
+            } else if (core instanceof SecurityCamera) {
                 d.turnOn();
                 d.operate();
+
+            } else if (core instanceof SmartDoorLock) {
+                d.turnOff();
+
+            } else if (core instanceof AirPurifier) {
+                d.turnOn();
+
             } else {
                 d.turnOff();
             }
         }
-        System.out.println("[scene] night mode is activated");
+        System.out.println("Night Mode: done.");
     }
-
 
     public void startPartyMode() {
-        System.out.println("[scene] party mode");
+        System.out.println("\n--- Start Party Mode ---");
         for (Device d : devices.values()) {
-            d.turnOn();
-            if (d instanceof MusicSystem) d.operate(); // включить проигрывание
-            if (d.getName().toLowerCase().contains("camera")) d.turnOff();
-        }
-        System.out.println("[scene] party mode is activated");
-    }
+            Object core = coreOf(d);
 
-    /** Уходим из дома: всё off, камеры on + запись */
-    public void leaveHome() {
-        System.out.println("[scene] leave home");
-        for (Device d : devices.values()) {
-            d.turnOff();
-        }
-        for (Device d : devices.values()) {
-            if (d.getName().toLowerCase().contains("camera")) {
+            if (core instanceof Light) {
+                System.out.println(d.getName() + " : spec effects");
                 d.turnOn();
+
+            } else if (core instanceof MusicSystem) {
+                MusicSystem m = (MusicSystem) core;
+                d.turnOn();
+                safeSetVolume(m, 80);
                 d.operate();
+
+            } else if (core instanceof SmartTV) {
+                SmartTV tv = (SmartTV) core;
+                d.turnOn();
+                safeSetTvVolume(tv, 50);
+
+            } else if (core instanceof SecurityCamera) {
+                d.turnOff();
+
+            } else if (core instanceof AirPurifier) {
+                d.turnOn();
+
+            } else if (core instanceof Thermostat) {
+                Thermostat th = (Thermostat) core;
+                safeSetTemp(th, 23.0);
+                d.turnOn();
+
+            } else if (core instanceof SmartDoorLock) {
             }
         }
-        System.out.println("[scene] everything is turned off, home is safe");
+        System.out.println("Party Mode: done.");
     }
 
-    // ===== Внутренние помощники =====
-    private void addIfNotNull(Device d) { if (d != null) addDevice(d); }
+    public void leaveHome() {
+        System.out.println("--- Leave Home ---");
+        for (Device d : devices.values()) d.turnOff();
 
-    private String doAndStatus(String name, java.util.function.Consumer<Device> action) {
-        Device d = devices.get(name);
-        if (d == null) return name + " : NOT FOUND";
-        action.accept(d);
-        return status(name);
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+            if (core instanceof SecurityCamera) {
+                d.turnOn();
+                d.operate();
+            } else if (core instanceof SmartDoorLock) {
+                d.turnOff();
+            }
+        }
+        System.out.println("Leave Home: done.");
+    }
+
+
+    public void cleaningMode() {
+        System.out.println("\n--- Cleaning Mode ---");
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+
+            if (core instanceof Light) {
+                d.turnOn();
+
+            } else if (core instanceof MusicSystem) {
+                MusicSystem m = (MusicSystem) core;
+                d.turnOn();
+                safeSetVolume(m, 65);
+                d.operate();
+
+            } else if (core instanceof AirPurifier) {
+                d.turnOn();
+
+            } else if (core instanceof SmartTV || core instanceof SecurityCamera) {
+                d.turnOff();
+
+            } else if (core instanceof Thermostat) {
+                d.turnOn();
+            }
+        }
+        System.out.println("Cleaning Mode: done.");
+    }
+
+    public void vacationMode() {
+        System.out.println("--- Vacation Mode ---");
+        for (Device d : devices.values()) d.turnOff();
+
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+
+            if (core instanceof SecurityCamera) {
+                d.turnOn();
+                d.operate();
+
+            } else if (core instanceof SmartDoorLock) {
+                d.turnOff();
+
+            } else if (core instanceof Thermostat) {
+                Thermostat th = (Thermostat) core;
+                safeSetTemp(th, 18.0);
+                d.turnOn();
+            }
+        }
+        System.out.println("Vacation Mode: done.");
+    }
+
+    public void securityAlert() {
+        System.out.println("--- Security Alert ---");
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+
+            if (core instanceof Light) {
+                d.turnOn();
+
+            } else if (core instanceof SecurityCamera) {
+                d.turnOn();
+                d.operate();
+
+            } else if (core instanceof SmartDoorLock) {
+                d.turnOff();
+
+            } else {
+                d.turnOff();
+            }
+        }
+        System.out.println("Security Alert: done.");
+    }
+
+    public void printStatus() {
+        System.out.println("--- Devices status ---");
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+            System.out.println(" • " + d.getName() + " : " + (d.isOn() ? "ON" : "OFF")
+                    + " [" + core.getClass().getSimpleName() + "]");
+        }
+    }
+
+
+
+    private Object coreOf(Device d) {
+        Device cur = d;
+        while (cur instanceof DeviceDecorator) {
+            cur = ((DeviceDecorator) cur).decorator;
+        }
+        return cur;
+    }
+
+    private void safeSetVolume(MusicSystem ms, int vol) {
+        try { ms.setVolume(vol); } catch (Throwable ignored) {}
+    }
+    private void safeSetTvVolume(SmartTV tv, int vol) {
+        try { tv.setVolume(vol); } catch (Throwable ignored) {}
+    }
+    private void safeSetTemp(Thermostat th, double t) {
+        try { th.setTemperature(t); } catch (Throwable ignored) {}
     }
 }
 
@@ -153,72 +231,170 @@ public final class HomeAutomationFacade {
 
 
 
+/*import java.util.*;
+import Abstract.Device;
+
+public final class HomeAutomationFacade {
 
 
+    private final Map<String, Device> devices = new LinkedHashMap<>();
 
-
-
-
-
-
-
-
-
-
-
-
-
-    /*private Light light;
-    private MusicSystem musicSystem;
-    private Thermostat thermostat;
-    private SecurityCamera camera;
-
-    public HomeAutomationFacade(DeviceRegistry registry){
-        this.light=registry.kitchenLight;
-        this.musicSystem=registry.kitchenAudio;
-        this.thermostat=registry.kitchenThermostat;
-        this.camera=registry.kitchenCamera;
+    public HomeAutomationFacade() {
     }
 
+    public HomeAutomationFacade(Collection<Device> initial) {
+        if (initial != null) {
+            for(Device d : initial) addDevice(d);
+        }
+    }
+
+    public void addDevice(Device d) {
+        if (d == null || d.getName() == null || d.getName().isBlank()) return;
+        devices.put(d.getName(), d);
+    }
+
+    public boolean removeDevice(String name) {
+        return devices.remove(name) != null;
+    }
+
+    public Device get(String name) {
+        return devices.get(name);
+    }
+
+    public Collection<Device> listDevices() {
+        return Collections.unmodifiableCollection(devices.values());
+    }
+
+
     public void activateNightMode() {
-        System.out.println("night mode");
-        light.turnOff();
-
-        thermostat.turnOff();
-        System.out.println("eco regime ");
-
-        camera.turnOn();
-        camera.operate();
-
-        System.out.println("night mode is activated");
+        System.out.println("---Night mode---");
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+        }
+        if (core instanceof SecurityCamera) {
+            d.turnOn();
+            d.operate();
+        } else if (core instanceof Thermostat) {
+            d.turnOn();
+            d.setTemperature();
+        } else if (core instanceof SmartDoorLock) {
+            d.turnOff();
+        } else if (core instanceof AirPurifier) {
+            d.operate();
+            d.turnOn();
+        } else {
+            d.turnOff();
+        }
     }
 
     public void startPartyMode() {
-        System.out.println("party mode");
-
-        light.turnOn();
-        System.out.println("light with speceffects");
-
-        musicSystem.turnOn();
-        musicSystem.operate();
-        System.out.println("music is loud");
-
-        camera.turnOff();
-
-        System.out.println("party mode is activated");
+        System.out.println("---Start Party Mode---");
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+        }
+        if (core instanceof Light) {
+            System.out.println(d.getName() + "spec effects+");
+            d.turnOn();
+        } else if (core instanceof MusicSystem m) {
+            d.turnOn();
+            d.setVolume(m, 80);
+            d.operate();
+        } else if (core instanceof SmartTV) {
+            d.turnOn();
+            d.setVolume(50);
+        } else if (core instanceof SecurityCamera) {
+            d.turnOn();
+        } else if (core instanceof AirPurifier) {
+            d.turnOn();
+        } else if (core instanceof Thermostat) {
+            d.turnOn();
+            d.setTemperature(18.0);
+        }
+        System.out.println("---party mode is on");
     }
 
     public void leaveHome() {
-        System.out.println("leave home");
+        System.out.println("---Leave Home---");
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+            if (core instanceof SecurityCamera) {
+                d.turnOn();
+                d.operate();
+            } else if (core instanceof SmartDoorLock) {
+                d.turnOff();
+            } else {
+                d.turnOff();
+            }
+        }
+        System.out.println("Leave Home: done.");
+    }
 
-        light.turnOff();
-        musicSystem.turnOff();
-        thermostat.turnOff();
 
-        camera.turnOn();
-        camera.operate();
-        System.out.println("Security mode is active");
+    public void cleaningMode() {
+        System.out.println("---cleaning Mode---");
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+            if (core instanceof Light) {
+                d.turnOn();
+            } else if (core instanceof MusicSystem) {
+                d.turnOn();
+                d.operate();
+            } else if (core instanceof AirPurifier) {
+                d.turnOn();
+            } else if (core instanceof SmartTV || core instanceof SecurityCamera) {
+                d.turnOff();
+            } else if (core instanceof Thermostat) {
+                d.turnOn();
+            }
+        }
+        System.out.println("Cleaning Mode: done.");
+    }
+    public void vacationMode() {
+        System.out.println("---Vacation Mode---");
+        devices.values().forEach(Device::turnOff);
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+            if (core instanceof SecurityCamera) {
+                d.turnOn();
+                d.operate();
+            } else if (core instanceof SmartDoorLock) {
+                d.turnOff();
+            } else if (core instanceof Thermostat th) {
+                d.turnOn();
+            }
+        }
+        System.out.println("Vacation Mode: done.");
+    }
 
-        System.out.println("everything is turn off, home is safe");
+    public void securityAlert() {
+        System.out.println("---Security Alert---");
+        for (Device d : devices.values()) {
+            Object core = coreOf(d);
+            if (core instanceof Light) {
+                d.turnOn();
+            } else if (core instanceof SecurityCamera) {
+                d.turnOn();
+                d.operate();
+            } else {
+                d.turnOff();
+            }
+        }
+        System.out.println("Security Alert: done.");
+    }
+
+    public void printStatus() {
+        System.out.println("\n--- Devices status ---");
+        for (Device d : devices.values()) {
+            System.out.println(d.getName() + " : " + (d.isOn() ? "ON" : "OFF")
+                    + " [" + coreOf(d).getClass().getSimpleName() + "]");
+        }
+    }
+
+    private Object coreOf(Device d) {
+        Device cur = d;
+        while (cur instanceof DeviceDecorator dd) {
+            cur = dd.decorator;
+        }
+        return cur;
     }
 }*/

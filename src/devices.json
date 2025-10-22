@@ -1,0 +1,34 @@
+{"devices": [
+    {"name": "Living Room Light",
+      "type": "Light",
+      "decorators": [ {"name": "EnergySaving"}, {"name": "VoiceControl"} ]
+    },
+    {
+      "name": "Home Audio System",
+      "type": "MusicSystem",
+      "decorators": [ {"name": "VoiceControl"}, {"name": "RemoteAccess"} ]
+    },
+    {
+      "name": "Entrance Camera",
+      "type": "SecurityCamera",
+      "decorators": [
+        {"name": "RemoteAccess"},
+        {"name": "Scheduler", "params": {"on": "20:00", "off": "06:00"}}
+      ]
+    },
+    {
+      "name": "Retro JBL 1980",
+      "type": "OldSpeaker",
+      "decorators": [ {"name": "EnergySaving"} ]
+    },
+    {
+      "name": "Main Thermostat",
+      "type": "Thermostat"
+    },
+    {
+      "name": "Front Door Lock",
+      "type": "SmartDoorLock",
+      "decorators": [ {"name": "RemoteAccess"} ]
+    }
+  ]
+}

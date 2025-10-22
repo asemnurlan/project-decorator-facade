@@ -1,25 +1,37 @@
+import java.util.List;
+import java.util.ArrayList;
+import Abstract.Device;
+
 public class Main {
     public static void main(String[] args) {
-        DeviceRegistry reg = new DeviceRegistry();         // твой стартовый реестр
-        HomeAutomationFacade f = new HomeAutomationFacade(reg);
+        System.out.println("=== SMART HOME AUTOMATION SYSTEM ===");
 
-        // динамическое добавление
-        f.addLight("hall light");
-        f.addMusicSystem("party audio");
+        DeviceRegistry registry = new DeviceRegistry();
 
-        // управление по имени
-        System.out.println(f.on("hall light"));
-        System.out.println(f.toggle("party audio"));
-        System.out.println(f.statusAll());
+        HomeAutomationFacade facade = new HomeAutomationFacade(registry.list());
+        System.out.println("Status");
+        facade.printStatus();
 
-        // удаление
-        f.removeDevice("party audio");
-        System.out.println(f.statusAll());
+        facade.startPartyMode();
+        facade.printStatus();
 
-        // сцены
-        f.activateNightMode();
-        f.startPartyMode();
-        f.leaveHome();
+        facade.activateNightMode();
+        facade.printStatus();
 
+        facade.leaveHome();
+        facade.printStatus();
+
+
+        Device oldSpeaker = new MusicSystemAdapter(new OldRadio("Retro JBL 1980"));
+        registry.register(oldSpeaker);
+        facade.addDevice(oldSpeaker);
+
+        System.out.println("Added OldSpeaker (via Adapter)");
+        facade.printStatus();
+
+        facade.securityAlert();
+        facade.printStatus();
+
+        System.out.println("=== END OF DEMO ===");
     }
 }

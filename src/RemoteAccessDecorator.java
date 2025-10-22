@@ -1,8 +1,21 @@
 import Abstract.Device;
 
 public class RemoteAccessDecorator extends DeviceDecorator{
+    private boolean connected=false;
+    private final String deviceId;
+
     public RemoteAccessDecorator(Device decorator){
         super(decorator);
+        this.deviceId= decorator.getName().replaceAll("\\s+","_").toLowerCase();
+    }
+
+    public void connect(){
+        if (!connected){
+            System.out.println("Remote Access: ");
+        }
+        else{
+            System.out.println("already connected");
+        }
     }
 
     @Override
